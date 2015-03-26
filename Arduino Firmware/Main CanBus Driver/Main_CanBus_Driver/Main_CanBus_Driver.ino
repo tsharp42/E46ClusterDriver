@@ -39,13 +39,19 @@ float Speed = 0.00f;
 bool LeftIndicatorLightActive = false;
 bool RightIndicatorLightActive = false;
 bool HighBeam = false;
+bool CruiseControl = false;
+bool ParkingBrake = false; // PCF8574 PIN 0
+
+// KBUS
+byte LightByte1 = 0x00;
 
 enum
 {
   Setup,
   DriveTrainHS,
-  DriveTrainLS,
-  Lights
+  Lights,
+  General,
+  LowPriority
 };
 
 void OnSetup()
@@ -57,6 +63,16 @@ void OnSetup()
   }
 }
 
+void OnGeneral()
+{
+  CruiseControl = cmdMessenger.readBoolArg();
+  ParkingBrake = cmdMessenger.readBoolArg();
+}
+
+void OnLowPriority()
+{
+  //DoKbus();
+}
 
 void OnDriveTrainHS()
 {
@@ -91,7 +107,7 @@ void OnLights()
   RightIndicatorLightActive = cmdMessenger.readBoolArg();
   HighBeam = cmdMessenger.readBoolArg();
   
-  byte LightByte1 = 0x00;
+  LightByte1 = 0x00;
   if(RightIndicatorLightActive)
     LightByte1 = LightByte1 | 0x40;
     
@@ -100,14 +116,9 @@ void OnLights()
     
   if(HighBeam)
     LightByte1 = LightByte1 | 0x04;
-   
-  // Send Kbus Controller Commands
-  // BM = 	| Double Rate | Rind | Lind | RearFogs | FrontFogs | FullBeam | ? | ? |
-  // BM2 = 	| CarImage | ? | LsideLight | RSideLight | Rr-L-Sidelight | Rr-R-Sidelight | ? | ? |
-  Wire.beginTransmission(KBUSADDRESS);
-  Wire.write(LightByte1); // First Byte of Light Command
-  Wire.write(0x00); // Second Byte Of Light command
-  Wire.endTransmission();
+    
+    
+  DoKbus();
 }
 
 void setup() {
@@ -117,6 +128,8 @@ void setup() {
   cmdMessenger.attach(Setup, OnSetup);
   cmdMessenger.attach(DriveTrainHS, OnDriveTrainHS);
   cmdMessenger.attach(Lights, OnLights);
+  cmdMessenger.attach(General, OnGeneral);
+  cmdMessenger.attach(LowPriority, OnLowPriority);
   
   pinMode(SPEED_PIN, OUTPUT);
   
@@ -168,6 +181,8 @@ void loop() {
   cmdMessenger.feedinSerialData();
   
   timer.run();
+  
+  expander.digitalWrite(0, ParkingBrake);
 
 }
 
@@ -181,8 +196,12 @@ void DoCAN() {
   // DME 4
   // L1: Lights. Bits: | ? | ? | ? | EML | Cruise | ? | Check Engine | ? |
   // L2: Lights. Bits: | ? | ? | ? | ? | O/H Light | ? | Oil Level | ? |
-  //                         L1   <  MPG   >   L2   oTemp  Chg  -      -
-  unsigned char stmp2[8] = {0x00, 0x00, 0x00, 0x00, 0xAB, 0x00, 0x00, 0x00};
+  //                         L1   <  MPG   >   L2   oTemp  Chg  -   -
+  byte L1 = 0x00;
+  if(CruiseControl)
+    L1 = 0x08;
+  
+  unsigned char stmp2[8] = {L1, 0x00, 0x00, 0x00, 0xAB, 0x00, 0x00, 0x00};
   CAN.sendMsgBuf(0x545, 0, 8, stmp2);
   
   // DME2
@@ -194,6 +213,14 @@ void DoCAN() {
   unsigned char stmp4[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
   CAN.sendMsgBuf(0x153, 0, 8, stmp4);
   
-  
-  
+}
+
+void DoKbus(){
+ // Send Kbus Controller Commands
+  // BM = 	| Double Rate | Rind | Lind | RearFogs | FrontFogs | FullBeam | ? | ? |
+  // BM2 = 	| CarImage | ? | LsideLight | RSideLight | Rr-L-Sidelight | Rr-R-Sidelight | ? | ? |
+  Wire.beginTransmission(KBUSADDRESS);
+  Wire.write(LightByte1); // First Byte of Light Command
+  Wire.write(0x00); // Second Byte Of Light command
+  Wire.endTransmission(); 
 }
