@@ -1,0 +1,18 @@
+SET TIME:
+               HR MIN
+3B 06 80 40 01 0C 3B
+
+
+SET UNITS, MPG, 24H
+80 05 BF 15 01 08
+
+
+LIGHTS:
+BM 	= 	| Double Rate | Rind | Lind | RearFogs | FrontFogs | FullBeam | ? | ? |
+BM2 	= 	| CarImage | ? | LsideLight | RSideLight | Rr-L-Sidelight | Rr-R-Sidelight | ? | ? |
+D0 08 BF 5B _BM_ 00 00 _BM2_ 00
+
+DOORS:
+BM = 	| ? | ? | ? | ? | RL | RR | FL | FR |
+BM2 = 	| ? | ? | Boot | ? | ? | ? | ? | ? |
+00 05 BF 7A _BM_ _BM2_
