@@ -9,6 +9,7 @@
 // Pin to output the speed signal
 // Connect to cluster with an open colelctor buffer (2N2222 and a 1K resistor will do)
 #define SPEED_PIN 9
+#define HEARTBEAT_PIN A0
 // Address for the PC5874(A) used to drive extra channels
 #define IOADDRESS 0x3C
 // Address of the second Arduino handling the KBUS interface
@@ -30,6 +31,8 @@ MCP_CAN CAN(CAN_CS);
 SimpleTimer timer;
 PCF8574 expander;
 
+// Debug
+bool heartbeat = false;
 
 float RPM = 0.00f;
 float MaxRPM = 5000.00f;
@@ -132,6 +135,7 @@ void setup() {
   cmdMessenger.attach(LowPriority, OnLowPriority);
   
   pinMode(SPEED_PIN, OUTPUT);
+  pinMode(HEARTBEAT_PIN, OUTPUT);
   
   expander.begin(IOADDRESS);
   expander.pinMode(0, OUTPUT);
@@ -166,6 +170,7 @@ void setup() {
   Serial.write("OK!");
   
   timer.setInterval(20, DoCAN);
+  timer.setInterval(500, HeartBeat);
 }
 
 void loop() {
@@ -223,4 +228,10 @@ void DoKbus(){
   Wire.write(LightByte1); // First Byte of Light Command
   Wire.write(0x00); // Second Byte Of Light command
   Wire.endTransmission(); 
+}
+
+void HeartBeat()
+{
+    heartbeat = !heartbeat;
+    digitalWrite(HEARTBEAT_PIN, heartbeat);
 }
