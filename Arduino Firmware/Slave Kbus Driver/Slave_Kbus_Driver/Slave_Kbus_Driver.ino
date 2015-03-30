@@ -1,13 +1,18 @@
 #include <Wire.h>
+#include <SimpleTimer.h>
 
 #define kbus Serial
 
 #define I2C_ADDRESS 0x80
+#define HEARTBEAT_PIN A0
 
 byte LightByte1 = 0x00;
 byte LightByte2 = 0x00;
 
 bool sendFrame = false;
+bool heartbeat = false;
+
+SimpleTimer timer;
 
 void setup() {
   // KBus is 9600 8E1
@@ -15,6 +20,9 @@ void setup() {
 
   Wire.begin(I2C_ADDRESS);
   Wire.onReceive(receiveEvent);
+  
+  pinMode(HEARTBEAT_PIN, OUTPUT);
+  timer.setInterval(500, HeartBeat);
 }
 
 void receiveEvent(int howMany)
@@ -23,9 +31,13 @@ void receiveEvent(int howMany)
   LightByte1 = Wire.read();
   LightByte2 = Wire.read();
   sendFrame = true;
+  
+  HeartBeat();
 }
 
 void loop() {
+  
+  timer.run();
   
   if(sendFrame)
   {
@@ -52,4 +64,10 @@ byte iso_checksum(byte *data, byte len)//len is the number of bytes (not the # o
     crc=crc^data[i];
   }
   return crc;
+}
+
+void HeartBeat()
+{
+    heartbeat = !heartbeat;
+    digitalWrite(HEARTBEAT_PIN, heartbeat);
 }
